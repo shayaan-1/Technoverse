@@ -40,8 +40,7 @@ export default function LoginPage() {
     const userRole = result.user?.role || 'citizen'
     
     const redirectPath =
-
-      userRole === 'admin' ? '/admin'
+      userRole === 'admin' ? '/admins'
       : userRole === 'department_official' ? '/department'
       : '/user'
 
