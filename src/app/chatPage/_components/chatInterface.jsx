@@ -16,8 +16,7 @@ import {
   Building, 
   MessageCircle,
   Plus,
-  Search,
-  AlertCircle
+  Search 
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -27,92 +26,92 @@ export default function ChatInterface({ user }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [typing, setTyping] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef(null);
-  const channelRef = useRef(null);
 
-  // Initialize realtime subscriptions
+  // Fetch chat rooms on component mount
   useEffect(() => {
-    if (!user?.id) return;
-
-    initializeChat();
+    fetchChatRooms();
+    // Set up real-time subscription for rooms
+    const roomsSubscription = supabase
+      .channel('chat_rooms')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'chat_rooms' },
+        fetchChatRooms
+      )
+      .subscribe();
 
     return () => {
-      // Cleanup subscriptions
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      roomsSubscription.unsubscribe();
     };
   }, [user]);
 
-  // Scroll to bottom when new messages arrive
+  // Fetch messages when active room changes
+  useEffect(() => {
+    if (activeRoom) {
+      fetchMessages(activeRoom.id);
+      // Set up real-time subscription for messages
+      const messagesSubscription = supabase
+        .channel(`messages_${activeRoom.id}`)
+        .on('postgres_changes',
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `room_id=eq.${activeRoom.id}`
+          },
+          handleMessageChange
+        )
+        .subscribe();
+
+      return () => {
+        messagesSubscription.unsubscribe();
+      };
+    }
+  }, [activeRoom]);
+
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const initializeChat = async () => {
-    try {
-      await fetchChatRooms();
-      setupRealtimeSubscriptions();
-      setLoading(false);
-    } catch (error) {
-      console.error('Error initializing chat:', error);
-      setLoading(false);
-    }
-  };
-
   const fetchChatRooms = async () => {
     try {
-      // Build query based on user role and permissions
-      let query = supabase
+      const { data, error } = await supabase
         .from('chat_rooms')
         .select(`
           *,
-          latest_message:messages(
+          messages (
             id,
             content,
             created_at,
-            sender:profiles!messages_sender_id_fkey(full_name)
+            sender:profiles!messages_sender_id_fkey (
+              full_name
+            )
           )
         `)
-        .eq('is_active', true);
-
-      // Filter based on user role
-      if (user.role === 'admin') {
-        // Admin sees all rooms
-      } else if (user.role === 'department_official' && user.department) {
-        // Department officials see public and their department rooms
-        query = query.or(`type.eq.public,and(type.eq.department,department.eq.${user.department})`);
-      } else {
-        // Citizens see only public rooms
-        query = query.eq('type', 'public');
-      }
-
-      const { data, error } = await query
+        .eq('is_active', true)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
+      
+      // Get the latest message for each room
+      const roomsWithLatestMessage = data.map(room => ({
+        ...room,
+        latest_message: room.messages?.[room.messages.length - 1] || null,
+        messages: undefined // Remove messages array to avoid confusion
+      }));
 
-      // Process rooms to get the actual latest message
-      const processedRooms = data.map(room => {
-        const latestMsg = room.latest_message?.[room.latest_message.length - 1];
-        return {
-          ...room,
-          latest_message: latestMsg || null,
-        };
-      });
-
-      setRooms(processedRooms);
-
+      setRooms(roomsWithLatestMessage);
+      
       // Set first room as active if none selected
-      if (!activeRoom && processedRooms.length > 0) {
-        setActiveRoom(processedRooms[0]);
-        await fetchMessages(processedRooms[0].id);
+      if (!activeRoom && roomsWithLatestMessage.length > 0) {
+        setActiveRoom(roomsWithLatestMessage[0]);
       }
-
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching chat rooms:', error);
+      setLoading(false);
     }
   };
 
@@ -131,7 +130,7 @@ export default function ChatInterface({ user }) {
         `)
         .eq('room_id', roomId)
         .order('created_at', { ascending: true })
-        .limit(100);
+        .limit(50);
 
       if (error) throw error;
       setMessages(data || []);
@@ -140,66 +139,10 @@ export default function ChatInterface({ user }) {
     }
   };
 
-  const setupRealtimeSubscriptions = () => {
-    // Create a single channel for all realtime events
-    const channel = supabase
-      .channel('chat_realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages'
-        },
-        handleMessageChange
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_rooms'
-        },
-        handleRoomChange
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-  };
-
-  const handleMessageChange = async (payload) => {
+  const handleMessageChange = (payload) => {
     if (payload.eventType === 'INSERT') {
-      const newMessage = payload.new;
-      
-      // Only add message if it's for the current active room
-      if (activeRoom && newMessage.room_id === activeRoom.id) {
-        // Fetch the complete message with sender info
-        const { data: completeMessage } = await supabase
-          .from('messages')
-          .select(`
-            *,
-            sender:profiles!messages_sender_id_fkey (
-              id,
-              full_name,
-              avatar_url,
-              role
-            )
-          `)
-          .eq('id', newMessage.id)
-          .single();
-
-        if (completeMessage) {
-          setMessages(prev => [...prev, completeMessage]);
-        }
-      }
-
-      // Update the room's latest message
-      setRooms(prev => prev.map(room => 
-        room.id === newMessage.room_id 
-          ? { ...room, latest_message: newMessage, updated_at: newMessage.created_at }
-          : room
-      ));
-
+      // Fetch sender details for new message
+      fetchMessageWithSender(payload.new.id);
     } else if (payload.eventType === 'UPDATE') {
       setMessages(prev => prev.map(msg => 
         msg.id === payload.new.id ? { ...msg, ...payload.new } : msg
@@ -209,29 +152,27 @@ export default function ChatInterface({ user }) {
     }
   };
 
-  const handleRoomChange = (payload) => {
-    if (payload.eventType === 'INSERT') {
-      // Check if user has access to this new room
-      const newRoom = payload.new;
-      const hasAccess = checkRoomAccess(newRoom);
-      
-      if (hasAccess) {
-        setRooms(prev => [{ ...newRoom, latest_message: null }, ...prev]);
-      }
-    } else if (payload.eventType === 'UPDATE') {
-      setRooms(prev => prev.map(room => 
-        room.id === payload.new.id ? { ...room, ...payload.new } : room
-      ));
-    } else if (payload.eventType === 'DELETE') {
-      setRooms(prev => prev.filter(room => room.id !== payload.old.id));
-    }
-  };
+  const fetchMessageWithSender = async (messageId) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:profiles!messages_sender_id_fkey (
+            id,
+            full_name,
+            avatar_url,
+            role
+          )
+        `)
+        .eq('id', messageId)
+        .single();
 
-  const checkRoomAccess = (room) => {
-    if (user.role === 'admin') return true;
-    if (room.type === 'public') return true;
-    if (room.type === 'department' && user.role === 'department_official' && user.department === room.department) return true;
-    return false;
+      if (error) throw error;
+      setMessages(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error fetching new message:', error);
+    }
   };
 
   const sendMessage = async () => {
@@ -248,22 +189,10 @@ export default function ChatInterface({ user }) {
         });
 
       if (error) throw error;
-
-      // Also update the room's updated_at timestamp
-      await supabase
-        .from('chat_rooms')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', activeRoom.id);
-
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
     }
-  };
-
-  const handleRoomSelect = async (room) => {
-    setActiveRoom(room);
-    await fetchMessages(room.id);
   };
 
   const scrollToBottom = () => {
@@ -274,7 +203,7 @@ export default function ChatInterface({ user }) {
     switch (room.type) {
       case 'public': return <Hash className="w-4 h-4" />;
       case 'department': return <Building className="w-4 h-4" />;
-      case 'issue': return <AlertCircle className="w-4 h-4" />;
+      case 'issue': return <MessageCircle className="w-4 h-4" />;
       default: return <Users className="w-4 h-4" />;
     }
   };
@@ -288,18 +217,6 @@ export default function ChatInterface({ user }) {
     }
   };
 
-  const filteredRooms = rooms.filter(room =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    room.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -309,10 +226,10 @@ export default function ChatInterface({ user }) {
   }
 
   return (
-    <div className="flex h-[700px] bg-white rounded-lg shadow-lg overflow-hidden border">
+    <div className="flex h-[600px] bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Sidebar - Chat Rooms */}
       <div className="w-1/3 border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+        <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Chat Rooms</h2>
             <Button size="sm" variant="outline">
@@ -324,26 +241,24 @@ export default function ChatInterface({ user }) {
             <Input
               placeholder="Search rooms..."
               className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
         <ScrollArea className="flex-1">
           <div className="p-2">
-            {filteredRooms.map((room) => (
+            {rooms.map((room) => (
               <div
                 key={room.id}
-                onClick={() => handleRoomSelect(room)}
-                className={`p-3 rounded-lg cursor-pointer transition-all mb-2 ${
+                onClick={() => setActiveRoom(room)}
+                className={`p-3 rounded-lg cursor-pointer transition-colors mb-2 ${
                   activeRoom?.id === room.id 
-                    ? 'bg-blue-50 border border-blue-200 shadow-sm' 
+                    ? 'bg-blue-50 border border-blue-200' 
                     : 'hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`text-gray-600 ${activeRoom?.id === room.id ? 'text-blue-600' : ''}`}>
+                  <div className="text-gray-600">
                     {getRoomIcon(room)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -363,11 +278,6 @@ export default function ChatInterface({ user }) {
                         {room.latest_message.sender?.full_name}: {room.latest_message.content}
                       </p>
                     )}
-                    {room.latest_message && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        {formatDistanceToNow(new Date(room.latest_message.created_at), { addSuffix: true })}
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -381,7 +291,7 @@ export default function ChatInterface({ user }) {
         {activeRoom ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 {getRoomIcon(activeRoom)}
                 <div>
@@ -389,7 +299,6 @@ export default function ChatInterface({ user }) {
                   <p className="text-sm text-gray-500">
                     {activeRoom.type === 'department' && `Department: ${activeRoom.department}`}
                     {activeRoom.type === 'public' && 'Public chat room'}
-                    {activeRoom.type === 'issue' && 'Issue discussion'}
                   </p>
                 </div>
               </div>
@@ -406,7 +315,7 @@ export default function ChatInterface({ user }) {
                     }`}
                   >
                     {message.sender_id !== user?.id && (
-                      <Avatar className="w-8 h-8 flex-shrink-0">
+                      <Avatar className="w-8 h-8">
                         <AvatarImage src={message.sender?.avatar_url} />
                         <AvatarFallback>
                           {message.sender?.full_name?.charAt(0) || 'U'}
@@ -442,10 +351,10 @@ export default function ChatInterface({ user }) {
                     </div>
 
                     {message.sender_id === user?.id && (
-                      <Avatar className="w-8 h-8 flex-shrink-0">
+                      <Avatar className="w-8 h-8">
                         <AvatarImage src={user?.avatar_url} />
                         <AvatarFallback>
-                          {user?.full_name?.charAt(0) || user?.fullName?.charAt(0) || 'U'}
+                          {user?.fullName?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
                     )}
@@ -456,19 +365,18 @@ export default function ChatInterface({ user }) {
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200">
               <div className="flex gap-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={`Message ${activeRoom.name}...`}
-                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                   className="flex-1"
                 />
                 <Button 
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
-                  className="px-6"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -479,7 +387,6 @@ export default function ChatInterface({ user }) {
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">
               <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium mb-2">Welcome to Chat</p>
               <p>Select a chat room to start messaging</p>
             </div>
           </div>

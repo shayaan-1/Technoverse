@@ -1,5 +1,5 @@
 import React from 'react'
-import ChatInterface from '../chatInterface/page'
+import ChatInterface from './_components/chatInterface'
 
 const page = () => {
   return (
