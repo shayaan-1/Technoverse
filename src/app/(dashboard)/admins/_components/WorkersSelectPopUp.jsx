@@ -10,7 +10,7 @@ const WorkersSelectPopUp = ({ workers, onClose, loading, issueId }) => {
   const assignWorker = async (worker) => {
     try {
       setAssigning(true);
-      const res = await fetch(`/api/admin-issues?id=${worker.id}&selected_issue=${issueId.id}`, {
+      const res = await fetch(`/api/admin/admin-issues?id=${worker.id}&selected_issue=${issueId.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

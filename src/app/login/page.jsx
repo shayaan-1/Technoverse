@@ -3,11 +3,8 @@ import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
-import { supabaseClient } from '@/lib/supabaseClient'
-import Cookies from 'js-cookie'
 import { useAuth } from '@/lib/authContext'
-import { loginUser } from '@/lib/authApi' // Import the API route for login
-
+import { loginUser } from '@/lib/authApi'
 
 export default function LoginPage() {
   const { signIn, profile } = useAuth()
@@ -24,33 +21,31 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-  e.preventDefault()
-  setIsLoading(true)
-  setError('')
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
   
-  try {
-    // Use the API route instead of direct signIn
-    const result = await loginUser(formData.email, formData.password)
-    
-    if (!result.success) {
-      throw new Error(result.message)
+    try {
+      const result = await loginUser(formData.email, formData.password)
+      
+      if (!result.success) {
+        throw new Error(result.message)
+      }
+
+      const userRole = result.user?.role || 'citizen'
+      
+      const redirectPath =
+        userRole === 'admin' ? '/admins'
+        : userRole === 'department_official' ? '/department'
+        : '/user'
+
+      router.push(redirectPath)
+    } catch (err) {
+      setError(err.message || 'Login failed')
+    } finally {
+      setIsLoading(false)
     }
-
-    // Get user role from the response
-    const userRole = result.user?.role || 'citizen'
-    
-    const redirectPath =
-      userRole === 'admin' ? '/admins'
-      : userRole === 'department_official' ? '/department'
-      : '/user'
-
-    router.push(redirectPath)
-  } catch (err) {
-    setError(err.message || 'Login failed')
-  } finally {
-    setIsLoading(false)
   }
-}
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -58,12 +53,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-white p-6">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-lg p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-green-700 rounded-full flex items-center justify-center mb-4">
               <LogIn className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
@@ -97,7 +92,7 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={(e) => updateField('email', e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
                   placeholder="Enter your email"
                 />
               </div>
@@ -115,35 +110,26 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={(e) => updateField('password', e.target.value)}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition duration-200"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Forgot Password Link */}
-            <div className="text-right">
-              <Link 
-                href="/forgot-password" 
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 bg-blue-500 hover:bg-blue-600 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:scale-[1.02]'
+              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 bg-green-600 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700 hover:shadow-lg transform hover:scale-[1.02]'
               }`}
             >
               {isLoading ? (
@@ -163,7 +149,7 @@ export default function LoginPage() {
               Don't have an account?{' '}
               <Link 
                 href="/register" 
-                className="text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
+                className="text-green-600 hover:text-green-700 font-medium hover:underline transition-colors"
               >
                 Sign up here
               </Link>
