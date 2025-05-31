@@ -65,3 +65,50 @@ export async function POST(request) {
     )
   }
 }
+
+export async function GET(req) {
+  try {
+    // Get department from cookies
+    const cookieStore = cookies();
+    const department = cookieStore.get('department')?.value;
+    const accessToken = cookieStore.get('access_token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'Authentication required' }, 
+        { status: 401 }
+      );
+    }
+
+    if (!department) {
+      return NextResponse.json(
+        { error: 'Department not found in cookies' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch issues that belong to the department
+    const { data: issues, error } = await supabaseAdmin
+      .from('issues')
+      .select('*')
+      .eq('assigned_department', department)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching issues:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch issues' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, issues }, { status: 200 });
+
+  } catch (error) {
+    console.error('GET /api/issues error:', error);
+    return NextResponse.json(
+      { error: 'An unexpected error occurred' },
+      { status: 500 }
+    );
+  }
+}
