@@ -7,15 +7,25 @@ export async function GET(req) {
     // Get user data from cookies
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
-    const userId = cookieStore.get('user_id')?.value;
+    const userCookie = cookieStore.get('user')?.value;
 
-    if (!accessToken || !userId) {
+    if (!accessToken || !userCookie) {
       return NextResponse.json(
-        { error: 'Authentication required' }, 
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
+    // ✅ Decode and parse the user JSON from the cookie
+    const users = JSON.parse(decodeURIComponent(userCookie));
+    const userId = users.id;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID not found in cookie' },
+        { status: 400 }
+      );
+    }
     // Verify the token
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(accessToken);
     

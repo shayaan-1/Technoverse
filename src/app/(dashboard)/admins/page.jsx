@@ -1,12 +1,13 @@
-import React from 'react'
-import IssueTableTabs from './_components/IssueTable'
+import React from "react";
+import IssueTableTabs from "./_components/IssueTable";
+
 
 const page = () => {
   return (
     <div>
-      <IssueTableTabs/>
+      <IssueTableTabs />
     </div>
-  )
-}
+  );
+};
 
-export default page
+export default page;

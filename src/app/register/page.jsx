@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, Shield, Building, Users, Eye, EyeOff, Phone } from 'lucide-react';
 import { registerUser } from '@/lib/authApi';
+import { Button } from '@/components/ui/button';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -168,7 +169,7 @@ const RegisterForm = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mb-4">
+           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-green-700 rounded-full flex items-center justify-center mb-4">
               <Building className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Smart City</h1>
@@ -372,8 +373,9 @@ const RegisterForm = () => {
             )}
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
+              variant='green'
               disabled={isLoading}
               className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 ${selectedRole.color} ${selectedRole.hoverColor} ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg transform hover:scale-[1.02]'
@@ -387,14 +389,14 @@ const RegisterForm = () => {
               ) : (
                 'Create Account'
               )}
-            </button>
+            </Button>
           </form>
 
           {/* Footer */}
           <div className="text-center mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium transition duration-200">
+              <a href="/login" className="text-green-600 hover:text-green-700 font-medium hover:underline transition-colors">
                 Sign in
               </a>
             </p>
