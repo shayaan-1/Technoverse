@@ -69,6 +69,51 @@ export async function POST(req) {
       maxAge: 60 * 60 * 24 * 30, // 30 days
     });
 
+    // Set user ID in an HTTP-only cookie
+    response.cookies.set('user_id', data.user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Set user role in an HTTP-only cookie
+    response.cookies.set('user_role', profile.role, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Set user department in an HTTP-only cookie
+    response.cookies.set('user_department', profile.department, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Set user email in an HTTP-only cookie (for display purposes)
+    response.cookies.set('user_email', data.user.email, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Set user full name in an HTTP-only cookie (for display purposes)
+    response.cookies.set('user_full_name', profile.full_name || '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
     return response;
 
   } catch (error) {
