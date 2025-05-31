@@ -45,7 +45,7 @@ export default function HomePage() {
           Next.js 14 + Supabase + ShadCN UI
         </div>
         
-        <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-6xl font-bold mb-6 text-[var(--heading-color)] bg-clip-text">
           Modern Authentication
           <br />
           Made Simple
@@ -59,13 +59,13 @@ export default function HomePage() {
         {!isAuthenticated ? (
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
-              <Button size="lg" className="h-14 px-8 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-lg font-medium rounded-xl transform hover:scale-105 transition-all duration-200">
+              <Button size="lg" variant="green" className="h-14 px-8 text-lg font-medium rounded-xl transform hover:scale-105 transition-all duration-200">
                 Get Started Free
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="h-14 px-8 text-lg font-medium rounded-xl border-2 hover:bg-gray-50 transform hover:scale-105 transition-all duration-200">
+              <Button variant="outline" size="lg" className="h-14 px-8 text-lg font-medium rounded-xl border-2 hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 cursor-pointer">
                 Sign In
               </Button>
             </Link>

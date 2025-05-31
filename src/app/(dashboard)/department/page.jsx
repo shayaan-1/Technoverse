@@ -154,7 +154,7 @@ export default function DashboardPage() {
                       <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="mt-2 p-0 h-auto font-medium text-blue-600"
+                        className="mt-2 p-0 h-auto font-medium text-blue-600 cursor-pointer"
                         disabled={action.disabled}
                       >
                         {action.disabled ? 'Coming Soon' : 'Configure'}

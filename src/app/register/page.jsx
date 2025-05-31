@@ -4,13 +4,13 @@ import OAuthButtons from '@/components/OAuthButtons'
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-md space-y-6">
         <AuthForm mode="register" />
         
-        <div className="max-w-md mx-auto">
+        {/* <div className="max-w-md mx-auto">
           <OAuthButtons />
-        </div>
+        </div> */}
 
         <div className="text-center">
           <p className="text-gray-600">
