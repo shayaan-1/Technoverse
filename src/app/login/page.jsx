@@ -40,9 +40,9 @@ export default function LoginPage() {
     const userRole = result.user?.role || 'citizen'
     
     const redirectPath =
-      userRole === 'admin' ? '/admin/dashboard'
-      : userRole === 'department_official' ? '/department/dashboard'
-      : '/citizen/dashboard'
+      userRole === 'admin' ? '/admin'
+      : userRole === 'department_official' ? '/department'
+      : '/user'
 
     router.push(redirectPath)
   } catch (err) {
