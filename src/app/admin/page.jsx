@@ -133,7 +133,7 @@ export default function AdminPage() {
       bgColor: 'bg-purple-50',
     },
   ]
-
+    
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto space-y-8">
